@@ -7,7 +7,9 @@ def escape(arg):
         return arg
     elif isinstance(arg, int):
         return str(arg)
-    elif isinstance(arg, str) or isinstance(arg, unicode):
+    elif isinstance(arg, str):
+        return arg.replace(r"'", r"''")
+    elif isinstance(arg, unicode):
         return arg.encode('ascii', 'ignore').replace(r"'", r"''")
     elif hasattr(arg, '__iter__'):
         items = [("'" + escape(i) + "'") for i in arg]
