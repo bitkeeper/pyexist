@@ -4,3 +4,9 @@
 build
 dist
 unit_test.cfg
+
+# Vim temporaries
+.swp
+.swo
+.*.swp
+.*.swo
