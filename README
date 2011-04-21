@@ -1,12 +1,10 @@
 = pyexist =
 
-pyexist is a simple Python wrapper around the eXist-db REST API.
-
-For documentation please refer to
-
-  [http://wiki.github.com/knipknap/pyexist/]
+This is a simple Python library for communicating with an eXist XML database
+via its REST API.
 
 = Dependencies =
 
 * Python 2.5 or greater
-* Exist DB [http://www.exist-db.org/]
+* eXist DB [http://www.exist-db.org/] (not necessarily on the machine were
+  this library is used)

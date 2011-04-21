@@ -13,7 +13,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
-The pyexist module.
+Python API for accessing eXist XML databases.
 """
 from version       import __version__
 from ExistDB       import ExistDB
