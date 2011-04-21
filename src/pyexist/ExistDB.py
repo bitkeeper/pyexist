@@ -12,19 +12,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-from __future__ import with_statement
-import os, httplib, urlparse, base64, threading
-from XQuery import XQuery
 
-_query_tmpl = '''
-<query xmlns="http://exist.sourceforge.net/NS/exist"%s>
-  <text><![CDATA[ %s ]]></text>
-  <properties>
-    <property name="indent" value="yes"/>
-    <property name="pretty-print" value="yes"/>
-  </properties>
-</query>
-'''
+from XQuery import XQuery
+import os, httplib, urlparse, base64, threading
 
 class ExistDB(object):
     """
@@ -129,14 +119,7 @@ class ExistDB(object):
             self.conn.close()
 
     def _post(self, thequery, start = 1, max = None):
-        args = ''
-        if start is not None:
-            args += ' start="%d"' % start
-        if max is None:
-            args += ' max="-1"'
-        else:
-            args += ' max="%d"' % max
-        thequery = _query_tmpl % (args, thequery)
+        thequery = package_query(thequery)
 
         with self.lock:
             self.conn.putrequest('POST', self.path)
@@ -189,3 +172,52 @@ class ExistDB(object):
         """
         thequery = open(filename, 'r').read()
         return self.query(thequery, **kwargs)
+
+
+def package_query(xquery, start = 1, limit = None, pretty_xml = False):
+    '''
+    Package up XQuery in a <query> XML tree
+
+    @type  start: int
+    @param start: The offset of the first returned item.
+    @type  limit: int or None
+    @param limit: The maximum number of results.
+    @rtype:  string
+    @return: The resulting XML.
+    '''
+
+    if limit is None:
+        limit = -1
+
+    # Create the XML document.
+    from xml.dom.minidom import getDOMImplementation, parseString
+    xmlns = 'http://exist.sourceforge.net/NS/exist'
+    impl  = getDOMImplementation()
+    doc   = impl.createDocument(None, "query", None)
+    root  = doc.documentElement
+    root.setAttribute('xmlns', xmlns)
+    root.setAttribute('max',   str(limit))
+    root.setAttribute('start', str(start))
+
+    # Add the XQuery into it.
+    elem = doc.createElement('text')
+    text = doc.createTextNode(xquery)
+    root.appendChild(elem)
+    elem.appendChild(text)
+
+    # Set query properties.
+    properties = doc.createElement('properties')
+    root.appendChild(properties)
+
+    if pretty_xml:
+        elem = doc.createElement('property')
+        elem.setAttribute('name', 'indent')
+        elem.setAttribute('value', 'yes')
+        properties.appendChild(elem)
+
+        elem = doc.createElement('property')
+        elem.setAttribute('name', 'pretty-print')
+        elem.setAttribute('value', 'yes')
+        properties.appendChild(elem)
+
+    return root.toxml()
