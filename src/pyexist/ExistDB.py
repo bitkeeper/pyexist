@@ -15,6 +15,12 @@
 
 from XQuery import XQuery
 import os, httplib, urlparse, base64, threading
+try:
+    from lxml import etree
+except ImportError:
+    have_lxml = False
+else:
+    have_lxml = True
 
 class ExistDB(object):
     """
@@ -68,9 +74,15 @@ class ExistDB(object):
 
         @type  docname: string
         @param docname: Document name in database.
-        @type  xml: string
-        @param xml: The XML to import.
+        @type  xml: string or lxml.ElementTree
+        @param xml: XML document to import.
         """
+        if have_lxml:
+            try:
+                xml = etree.tostring(xml, encoding='utf-8')
+            except TypeError:
+                pass
+
         with self.lock:
             self.conn.putrequest('PUT', self.path + '/' + docname)
             self._authenticate()
