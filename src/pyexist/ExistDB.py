@@ -72,17 +72,17 @@ class ExistDB(object):
         auth = base64.encodestring(auth).strip()
         self.conn.putheader('Authorization', 'Basic ' + auth)
 
-    def store(self, doc, xml):
+    def store(self, docname, xml):
         """
         Imports the XML string into the document with the given name.
 
-        @type  doc: string
-        @param doc: A document name.
+        @type  docname: string
+        @param docname: Document name in database.
         @type  xml: string
         @param xml: The XML to import.
         """
         with self.lock:
-            self.conn.putrequest('PUT', self.path + '/' + doc)
+            self.conn.putrequest('PUT', self.path + '/' + docname)
             self._authenticate()
             self.conn.putheader('Content-Type',   'text/xml')
             self.conn.putheader('Content-Length', str(len(xml)))
@@ -94,7 +94,7 @@ class ExistDB(object):
                 raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
             self.conn.close()
 
-    def store_file(self, filename, doc = None):
+    def store_file(self, filename, docname = None):
         """
         Like store(), but reads the XML from a file instead. If the document
         name is None, it defaults to the basename of the file, with the .xml
@@ -102,24 +102,24 @@ class ExistDB(object):
 
         @type  filename: string
         @param filename: The name of an XML file.
-        @type  doc: string
-        @param doc: A document name.
+        @type  docname: string
+        @param docname: A document name.
         """
-        if doc is None:
-            doc = os.path.splitext(os.path.basename(filename))[0]
+        if docname is None:
+            docname = os.path.splitext(os.path.basename(filename))[0]
         xml = open(filename).read()
-        self.store(doc, xml)
+        self.store(docname, xml)
 
-    def delete(self, doc):
+    def delete(self, docname):
         """
         Deletes the document with the given name. Raises an error if the
         document does not exist.
 
-        @type  doc: string
-        @param doc: A document name.
+        @type  docname: string
+        @param docname: Document name in database.
         """
         with self.lock:
-            self.conn.putrequest('DELETE', self.path + '/' + doc)
+            self.conn.putrequest('DELETE', self.path + '/' + docname)
             self._authenticate()
             self.conn.endheaders()
 
