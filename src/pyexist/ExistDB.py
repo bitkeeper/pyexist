@@ -185,6 +185,37 @@ class ExistDB(object):
         thequery = open(filename, 'r').read()
         return self.query(thequery, **kwargs)
 
+    def move(self, source, destination):
+        """
+        Moves the given source document to the given destination.
+        Note that you can not rename a document and move it to another
+        collection in the same call; this is a limitation of the XQuery
+        API.
+
+        @type  source: string
+        @param source: Document name in database.
+        @type  destination: string
+        @param destination: Document or collection name in database.
+        """
+        xquery = '''
+        if (xmldb:collection-available('%{destination}'))
+        then
+            (: The destination is a collection name :)
+            let $status := xmldb:move('%{source}', '%{destination}', '%{resource}')
+            return <status>{$status}</status>
+        else
+            (: The destination is a resource name :)
+            let $status := xmldb:rename('%{source}', '%{resource}', '%{destination}')
+            return <status>{$status}</status>
+        '''
+
+        sourcecol, sourceres = source.rsplit('/', 1)
+        query = self.query(xquery,
+                           source      = sourcecol,
+                           resource    = sourceres,
+                           destination = destination)
+        query.execute()
+        return query
 
 def package_query(xquery, start = 1, limit = None, pretty_xml = False):
     '''

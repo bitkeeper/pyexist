@@ -84,6 +84,16 @@ class XQuery(object):
             self.len = int(tree.get('{' + self.db.RESULT_NS + '}hits'))
         return self.len
 
+    def execute(self):
+        """
+        Executes the query and retrieves the entire result. Returns
+        the resulting XML.
+
+        @rtype:  lxml.etree._Element
+        @return: The XML tree that is produced by the query.
+        """
+        return self[:]
+
     def _getitem_post(self, key):
         """
         Produces the query to request the given range of items
