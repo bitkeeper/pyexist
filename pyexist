@@ -22,6 +22,7 @@ from pyexist  import __version__, ExistDB
 usage  = '''
 %prog [options] HOST/COLLECTION import    DOCUMENT FILE
 %prog [options] HOST/COLLECTION remove    DOCUMENT
+%prog [options] HOST/COLLECTION copy      SOURCE DESTINATION
 %prog [options] HOST/COLLECTION move      SOURCE DESTINATION
 %prog [options] HOST/COLLECTION query     QUERY
 %prog [options] HOST/COLLECTION queryfile FILE
@@ -76,6 +77,24 @@ if __name__ == '__main__':
         print "Deleting %s..." % document,
         try:
             db.delete(document)
+        except ExistDB.Error, e:
+            print e
+        else:
+            print "done."
+
+    # Copies an existing document.
+    elif action == 'copy':
+        try:
+            source = args[2]
+        except IndexError:
+            parser.error('a source document name is required')
+        try:
+            destination = args[3]
+        except IndexError:
+            parser.error('a destination document name is required')
+        print "Copying %s to %s..." % (source, destination),
+        try:
+            db.copy(source, destination)
         except ExistDB.Error, e:
             print e
         else:

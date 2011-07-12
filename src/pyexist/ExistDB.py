@@ -217,6 +217,36 @@ class ExistDB(object):
         query.execute()
         return query
 
+    def copy(self, source, destination):
+        """
+        Copies the given source document to the given destination.
+
+        @type  source: string
+        @param source: Document or collection name in database.
+        @type  destination: string
+        @param destination: Collection name in database.
+        """
+        xquery = '''
+        if (xmldb:collection-available('%{source}'))
+        then
+            (: The source is a collection name :)
+            let $status := xmldb:copy('%{source}', '%{destination}')
+            return <status>{$status}</status>
+        else
+            (: The source is a resource name :)
+            let $status := xmldb:copy('%{sourcecol}', '%{destination}', '%{sourceres}')
+            return <status>{$status}</status>
+        '''
+
+        sourcecol, sourceres = source.rsplit('/', 1)
+        query = self.query(xquery,
+                           source      = source,
+                           sourcecol   = sourcecol,
+                           sourceres   = sourceres,
+                           destination = destination)
+        query.execute()
+        return query
+
 def package_query(xquery, start = 1, limit = None, pretty_xml = False):
     '''
     Package up XQuery in a <query> XML tree
