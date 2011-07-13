@@ -20,18 +20,19 @@ from lxml     import etree
 from pyexist  import __version__, ExistDB
 
 usage  = '''
-%prog [options] HOST/COLLECTION import    DOCUMENT FILE
-%prog [options] HOST/COLLECTION remove    DOCUMENT
-%prog [options] HOST/COLLECTION copy      SOURCE DESTINATION
-%prog [options] HOST/COLLECTION move      SOURCE DESTINATION
-%prog [options] HOST/COLLECTION query     QUERY
-%prog [options] HOST/COLLECTION queryfile FILE
+%prog [options] HOST/PATH COLLECTION import    DOCUMENT FILE
+%prog [options] HOST/PATH COLLECTION remove    DOCUMENT
+%prog [options] HOST/PATH COLLECTION copy      SOURCE DESTINATION
+%prog [options] HOST/PATH COLLECTION move      SOURCE DESTINATION
+%prog [options] HOST/PATH COLLECTION rename    DOCUMENT NEWNAME
+%prog [options] HOST/PATH COLLECTION query     QUERY
+%prog [options] HOST/PATH COLLECTION queryfile FILE
 
 DATABASE is a hostname and port number, and COLLECTION is the database name
 
 Examples:
- %prog localhost:8088/db import mydoc myfile.xml
- %prog user:password@localhost:8088/system/config import my.xconf myfile.xml
+ %prog localhost:8088/exist/rest/db mycollection import mydoc myfile.xml
+ %prog user:password@localhost:8088 system/config import my.xconf myfile.xml
 '''.rstrip()
 parser = OptionParser(usage = usage, version = __version__)
 
@@ -41,21 +42,26 @@ if __name__ == '__main__':
     args.pop(0)
 
     try:
-        hostcoll = args[0]
+        hostpath = args.pop(0)
     except IndexError:
         parser.error('required argument "host"/"collection" missing')
 
     try:
-        action = args[1]
+        collection = args.pop(0)
+    except IndexError:
+        parser.error('collection argument missing')
+
+    try:
+        action = args.pop(0)
     except IndexError:
         parser.error('no action specified')
 
     # Import a file into a new or existing document.
-    db = ExistDB(hostcoll)
+    db = ExistDB(hostpath, collection)
     if action == 'import':
         try:
-            document = args[2]
-            filename = args[3]
+            document = args.pop(0)
+            filename = args.pop(0)
         except IndexError:
             parser.error('please specify a document and a filename')
         if not os.path.isfile(filename):
@@ -71,7 +77,7 @@ if __name__ == '__main__':
     # Removes an existing document.
     elif action == 'remove':
         try:
-            document = args[2]
+            document = args.pop(0)
         except IndexError:
             parser.error('a document name is required')
         print "Deleting %s..." % document,
@@ -85,11 +91,11 @@ if __name__ == '__main__':
     # Copies an existing document.
     elif action == 'copy':
         try:
-            source = args[2]
+            source = args.pop(0)
         except IndexError:
             parser.error('a source document name is required')
         try:
-            destination = args[3]
+            destination = args.pop(0)
         except IndexError:
             parser.error('a destination document name is required')
         print "Copying %s to %s..." % (source, destination),
@@ -103,11 +109,11 @@ if __name__ == '__main__':
     # Moves an existing document.
     elif action == 'move':
         try:
-            source = args[2]
+            source = args.pop(0)
         except IndexError:
             parser.error('a source document name is required')
         try:
-            destination = args[3]
+            destination = args.pop(0)
         except IndexError:
             parser.error('a destination document name is required')
         print "Moving %s to %s..." % (source, destination),
@@ -118,10 +124,28 @@ if __name__ == '__main__':
         else:
             print "done."
 
+    # Moves an existing document.
+    elif action == 'rename':
+        try:
+            document = args.pop(0)
+        except IndexError:
+            parser.error('a document name is required')
+        try:
+            new_name = args.pop(0)
+        except IndexError:
+            parser.error('a new document name is required')
+        print "Moving %s to %s..." % (document, new_name),
+        try:
+            db.rename(document, new_name)
+        except ExistDB.Error, e:
+            print e
+        else:
+            print "done."
+
     # Executes the given xquery.
     elif action == 'query':
         try:
-            thequery = args[2]
+            thequery = args.pop(0)
         except IndexError:
             parser.error('a query is required')
         try:
@@ -134,7 +158,7 @@ if __name__ == '__main__':
     # Executes the extended xquery that is contained in the given file.
     elif action == 'queryfile':
         try:
-            filename = args[2]
+            filename = args.pop(0)
         except IndexError:
             parser.error('please specify a filename')
         if not os.path.isfile(filename):

@@ -47,11 +47,12 @@ class ExistDB(object):
         except ValueError:
             auth   = ''
             netloc = uri.netloc
-        self.username = auth.split(':', 1)[0]
-        self.password = auth[len(self.username) + 1:]
-        self.lock     = threading.Lock()
-        self.conn     = httplib.HTTP(netloc)
-        self.path     = ''
+        self.username   = auth.split(':', 1)[0]
+        self.password   = auth[len(self.username) + 1:]
+        self.collection = collection
+        self.lock       = threading.Lock()
+        self.conn       = httplib.HTTP(netloc)
+        self.path       = ''
         if uri.path:
             self.path += '/' + uri.path.strip('/')
         if collection:
@@ -195,25 +196,52 @@ class ExistDB(object):
         @type  source: string
         @param source: Document name in database.
         @type  destination: string
-        @param destination: Document or collection name in database.
+        @param destination: A collection name in database.
         """
         xquery = '''
-        if (xmldb:collection-available('%{destination}'))
-        then
-            (: The destination is a collection name :)
-            let $status := xmldb:move('%{source}', '%{destination}', '%{resource}')
-            return <status>{$status}</status>
-        else
-            (: The destination is a resource name :)
-            let $status := xmldb:rename('%{source}', '%{resource}', '%{destination}')
-            return <status>{$status}</status>
+        let $status := xmldb:move('%{source}', '%{destination}', '%{resource}')
+        return <status>{$status}</status>
         '''
 
-        sourcecol, sourceres = source.rsplit('/', 1)
+        if self.collection and not source.startswith('/'):
+            source = self.collection + '/' + source
+        if self.collection and not destination.startswith('/'):
+            destination = self.collection + '/' + destination
+        try:
+            sourcecol, sourceres = source.rsplit('/', 1)
+        except ValueError:
+            sourcecol = ''
+            sourceres = source
         query = self.query(xquery,
                            source      = sourcecol,
                            resource    = sourceres,
                            destination = destination)
+        query.execute()
+        return query
+
+    def rename(self, resource, new_name):
+        """
+        Renames the given document (without moving it).
+
+        @type  resource: string
+        @param resource: Document name in database.
+        @type  new_name: string
+        @param new_name: The new name.
+        """
+        xquery = '''
+        let $status := xmldb:rename('%{collection}', '%{resource}', '%{newname}')
+        return <status>{$status}</status>
+        '''
+        if self.collection and not resource.startswith('/'):
+            resource = self.collection + '/' + resource
+        try:
+            collection, resource = resource.rsplit('/', 1)
+        except ValueError:
+            collection = ''
+        query = self.query(xquery,
+                           collection = collection,
+                           resource   = resource,
+                           newname    = new_name)
         query.execute()
         return query
 
@@ -238,7 +266,15 @@ class ExistDB(object):
             return <status>{$status}</status>
         '''
 
-        sourcecol, sourceres = source.rsplit('/', 1)
+        if self.collection and not source.startswith('/'):
+            source = self.collection + '/' + source
+        if self.collection and not destination.startswith('/'):
+            destination = self.collection + '/' + destination
+        try:
+            sourcecol, sourceres = source.rsplit('/', 1)
+        except ValueError:
+            sourcecol = ''
+            sourceres = source
         query = self.query(xquery,
                            source      = source,
                            sourcecol   = sourcecol,
