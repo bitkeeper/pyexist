@@ -57,9 +57,9 @@ class ExistDB(object):
             self.path += '/' + collection.strip('/')
         self.query_cls = query_cls
 
-    def _get_connection(self, method, request):
+    def _get_connection(self, method, path):
         conn = httplib.HTTP(self.netloc)
-        conn.putrequest('PUT', self.path + '/' + docname)
+        conn.putrequest('PUT', path)
         if not self.username:
             return conn
         if self.password:
