@@ -14,7 +14,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 from XQuery import XQuery
-import os, httplib, urlparse, base64, threading
+import os, httplib, urlparse, base64
 try:
     from lxml import etree
 except ImportError:
@@ -43,15 +43,13 @@ class ExistDB(object):
         # Python's urlparse module is so bad it hurts.
         uri = urlparse.urlparse('http://' + host_uri)
         try:
-            auth, netloc = uri.netloc.split('@', 1)
+            auth, self.netloc = uri.netloc.split('@', 1)
         except ValueError:
-            auth   = ''
-            netloc = uri.netloc
+            auth        = ''
+            self.netloc = uri.netloc
         self.username   = auth.split(':', 1)[0]
         self.password   = auth[len(self.username) + 1:]
         self.collection = collection
-        self.lock       = threading.Lock()
-        self.conn       = httplib.HTTP(netloc)
         self.path       = ''
         if uri.path:
             self.path += '/' + uri.path.strip('/')
@@ -59,7 +57,7 @@ class ExistDB(object):
             self.path += '/' + collection.strip('/')
         self.query_cls = query_cls
 
-    def _authenticate(self):
+    def _authenticate(self, conn):
         if not self.username:
             return
         if self.password:
@@ -67,7 +65,7 @@ class ExistDB(object):
         else:
             auth = self.username
         auth = base64.encodestring(auth).strip()
-        self.conn.putheader('Authorization', 'Basic ' + auth)
+        conn.putheader('Authorization', 'Basic ' + auth)
 
     def store(self, docname, xml):
         """
@@ -84,18 +82,18 @@ class ExistDB(object):
             except TypeError:
                 pass
 
-        with self.lock:
-            self.conn.putrequest('PUT', self.path + '/' + docname)
-            self._authenticate()
-            self.conn.putheader('Content-Type',   'text/xml')
-            self.conn.putheader('Content-Length', str(len(xml)))
-            self.conn.endheaders()
-            self.conn.send(xml)
+        conn = httplib.HTTP(self.netloc)
+        conn.putrequest('PUT', self.path + '/' + docname)
+        self._authenticate(conn)
+        conn.putheader('Content-Type',   'text/xml')
+        conn.putheader('Content-Length', str(len(xml)))
+        conn.endheaders()
+        conn.send(xml)
 
-            errcode, errmsg, headers = self.conn.getreply()
-            if errcode != 201:
-                raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
-            self.conn.close()
+        errcode, errmsg, headers = conn.getreply()
+        if errcode != 201:
+            raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
+        conn.close()
 
     def store_file(self, filename, docname = None):
         """
@@ -121,33 +119,32 @@ class ExistDB(object):
         @type  docname: string
         @param docname: Document name in database.
         """
-        with self.lock:
-            self.conn.putrequest('DELETE', self.path + '/' + docname)
-            self._authenticate()
-            self.conn.endheaders()
+        conn = httplib.HTTP(self.netloc)
+        conn.putrequest('DELETE', self.path + '/' + docname)
+        self._authenticate()
+        conn.endheaders()
 
-            errcode, errmsg, headers = self.conn.getreply()
-            if errcode != 200:
-                raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
-            self.conn.close()
+        errcode, errmsg, headers = conn.getreply()
+        if errcode != 200:
+            raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
+        conn.close()
 
     def _post(self, thequery, start = 1, max = None):
         thequery = package_query(thequery)
+        conn     = httplib.HTTP(self.netloc)
+        conn.putrequest('POST', self.path)
+        self._authenticate()
+        conn.putheader('Content-Type',   'text/xml')
+        conn.putheader('Content-Length', str(len(thequery)))
+        conn.endheaders()
+        conn.send(thequery)
 
-        with self.lock:
-            self.conn.putrequest('POST', self.path)
-            self._authenticate()
-            self.conn.putheader('Content-Type',   'text/xml')
-            self.conn.putheader('Content-Length', str(len(thequery)))
-            self.conn.endheaders()
-            self.conn.send(thequery)
+        errcode, errmsg, headers = conn.getreply()
+        if errcode not in (200, 202):
+            raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
 
-            errcode, errmsg, headers = self.conn.getreply()
-            if errcode not in (200, 202):
-                raise ExistDB.Error('Error %d: %s' % (errcode, errmsg))
-
-            response = self.conn.getfile().read()
-            self.conn.close()
+        response = conn.getfile().read()
+        conn.close()
         return response
 
     def query(self, thequery, **kwargs):
