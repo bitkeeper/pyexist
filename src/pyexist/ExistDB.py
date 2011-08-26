@@ -57,15 +57,18 @@ class ExistDB(object):
             self.path += '/' + collection.strip('/')
         self.query_cls = query_cls
 
-    def _authenticate(self, conn):
+    def _get_connection(self, method, request):
+        conn = httplib.HTTP(self.netloc)
+        conn.putrequest('PUT', self.path + '/' + docname)
         if not self.username:
-            return
+            return conn
         if self.password:
             auth = self.username + ':' + self.password
         else:
             auth = self.username
         auth = base64.encodestring(auth).strip()
         conn.putheader('Authorization', 'Basic ' + auth)
+        return conn
 
     def store(self, docname, xml):
         """
@@ -82,9 +85,7 @@ class ExistDB(object):
             except TypeError:
                 pass
 
-        conn = httplib.HTTP(self.netloc)
-        conn.putrequest('PUT', self.path + '/' + docname)
-        self._authenticate(conn)
+        conn = self._get_connection('PUT', self.path + '/' + docname)
         conn.putheader('Content-Type',   'text/xml')
         conn.putheader('Content-Length', str(len(xml)))
         conn.endheaders()
@@ -119,9 +120,7 @@ class ExistDB(object):
         @type  docname: string
         @param docname: Document name in database.
         """
-        conn = httplib.HTTP(self.netloc)
-        conn.putrequest('DELETE', self.path + '/' + docname)
-        self._authenticate()
+        conn = self._get_connection('DELETE', self.path + '/' + docname)
         conn.endheaders()
 
         errcode, errmsg, headers = conn.getreply()
@@ -131,9 +130,7 @@ class ExistDB(object):
 
     def _post(self, thequery, start = 1, max = None):
         thequery = package_query(thequery)
-        conn     = httplib.HTTP(self.netloc)
-        conn.putrequest('POST', self.path)
-        self._authenticate()
+        conn     = self._get_connection('POST', self.path)
         conn.putheader('Content-Type',   'text/xml')
         conn.putheader('Content-Length', str(len(thequery)))
         conn.endheaders()
