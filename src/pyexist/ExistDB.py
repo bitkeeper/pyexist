@@ -59,7 +59,7 @@ class ExistDB(object):
 
     def _get_connection(self, method, path):
         conn = httplib.HTTP(self.netloc)
-        conn.putrequest('PUT', path)
+        conn.putrequest(method, path)
         if not self.username:
             return conn
         if self.password:
